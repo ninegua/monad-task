@@ -34,16 +34,16 @@ import Control.Monad.Trans.Error
 class Monad m => MonadTask e m | m -> e where
   -- | @yield@ temporarily suspends current task to let others run. 
   yield  :: m ()
-  -- | @fork@ spawns a task and runs it immediate until it ends or 
+  -- | @fork@ spawns a task and runs it immediately until it ends or
   --   suspends before returning to current task.
   fork   :: m a -> m ()
-  -- | @watch@ suspends current task to wait for future events, and will
+  -- | @watch@ suspends the current task to wait for future events, and will
   --   resume execution when an event triggers its watching function. 
   watch  :: (e -> Maybe a) -> m a
   -- | @signal@ broadcasts an event to all other tasks that are watching,
   --   and give those who wake up the priority to run.
   signal :: e -> m ()
-  -- | @exit@ ends all tasks and return immediately.
+  -- | @exit@ ends all tasks and returns immediately.
   exit   :: m ()
 
 -- | @orElse@ is a helper function for combining two trigger functions 

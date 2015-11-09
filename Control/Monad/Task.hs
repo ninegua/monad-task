@@ -4,8 +4,8 @@ Task monad transformer can help refactor event and callback heavy
 programs into monads via co-routines. The idea is loosely
 based on /Combining Events And Threads For Scalable Network Services/,
 by Peng Li and Steve Zdancewic, in /PLDI/, 2007.
-(<http://www.cis.upenn.edu/~stevez/papers/abstracts.html#LZ07>), but 
-with deterministic and co-oprative lightweight threads, 
+(<http://www.cis.upenn.edu/~stevez/papers/abstracts.html#LZ07>), but
+with deterministic and co-operative lightweight threads,
 also known as co-routines, so that the base monad can be anything ranging 
 from IO to state monads, or your favorite monad transformer stack.
 
