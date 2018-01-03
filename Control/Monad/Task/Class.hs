@@ -28,7 +28,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Reader
 import qualified Control.Monad.Trans.Writer.Lazy as LazyWriter
 import qualified Control.Monad.Trans.Writer.Strict as StrictWriter
-import Control.Monad.Trans.Error
+import Control.Monad.Trans.Except
 
 -- | @MonadTask@ specifies a task monad @m@ over an event type @e@.
 class Monad m => MonadTask e m | m -> e where
@@ -51,10 +51,10 @@ class Monad m => MonadTask e m | m -> e where
 orElse :: (e -> Maybe a) -> (e -> Maybe b) -> e -> Maybe (Either a b)
 orElse f g x = maybe (fmap Right (g x)) (Just . Left) (f x)
 
-instance (Error e, Monad m, MonadTask a m) => MonadTask a (ErrorT e m) where
+instance (Monad m, MonadTask a m) => MonadTask a (ExceptT e m) where
   exit   = lift exit
   yield  = lift yield
-  fork   = lift . fork . runErrorT 
+  fork   = lift . fork . runExceptT
   watch  = lift . watch
   signal = lift . signal
 

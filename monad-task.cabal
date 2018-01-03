@@ -1,5 +1,5 @@
 name:         monad-task
-version:      0.1.0
+version:      0.2.0
 homepage:     http://github.com/ninegua/monad-task
 author:       Paul Liu
 maintainer:   Paul Liu <paul@thev.net>
@@ -32,6 +32,6 @@ Library
     Control.Monad.Task
     Control.Monad.Task.Class
     Control.Monad.Trans.Task
-  build-depends: base < 6, mtl == 2.*, transformers < 0.4
+  build-depends: base < 6, mtl == 2.*, transformers > 0.4 && < 0.6
   extensions:
   ghc-options: -Wall -fno-warn-unused-imports
