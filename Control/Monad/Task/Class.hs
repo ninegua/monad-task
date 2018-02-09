@@ -44,9 +44,9 @@ class Monad m => MonadTask e m | m -> e where
   --   and give those who wake up the priority to run.
   signal :: e -> m ()
   -- | @exit@ ends all tasks and returns immediately.
-  exit   :: m ()
+  exit   :: m a
   -- | @ret@ ends current task.
-  ret    :: m ()
+  ret    :: m a
 
 -- | @orElse@ is a helper function for combining two trigger functions
 --   disjuctively, favoring the first one.
