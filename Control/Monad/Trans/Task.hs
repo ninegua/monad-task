@@ -36,7 +36,9 @@ data Trace m e where
   YIELD  :: m (Trace m e) -> Trace m e
   FORK   :: m (Trace m e) -> m (Trace m e) -> Trace m e
   WATCH  :: (e -> Maybe v) -> (v -> m (Trace m e)) -> Trace m e
+  POLL   :: (e -> Maybe v) -> (Maybe v -> m (Trace m e)) -> Trace m e
   SIGNAL :: e -> m (Trace m e) -> Trace m e
+  SERVE  :: e -> m (Trace m e) -> Trace m e
 
 -- | @runTrace@ runs a trace to its completion in the base monad with a simple
 --   round-robin scheduler.
@@ -47,33 +49,44 @@ runTrace = loop . stepTrace
 
 -- | @TraceState e a@ describes either a trace is stalled (expecting input
 -- event of type `e`), or can be continued.
-data TraceState e a = Stalled (e -> a) | Continued a
+data TraceState m e a where
+  Stalled :: (e -> a) -> TraceState m e a
+  Continued :: (m (Trace m e) -> a) -> m (Trace m e) -> TraceState m e a
 
 -- @traceState@ applies functions to either brach of TraceState.
-traceState :: ((e -> a) -> b) -> (a -> b) -> TraceState e a -> b
+traceState :: ((e -> a) -> b) -> (a -> b) -> TraceState m e a -> b
 traceState f _ (Stalled x)   = f x
-traceState _ g (Continued x) = g x
+traceState _ g (Continued h x) = g (h x)
 
 -- | @StepTrace@ is used to step through a trace
-newtype StepTrace m e = StepTrace { nextStep :: TraceState e (m (StepTrace m e)) }
+newtype StepTrace m e = StepTrace { nextStep :: TraceState m e (m (StepTrace m e)) }
 
 -- | @stepTrace@ runs a single step of a trace
 stepTrace :: Monad m => m (Trace m e) -> StepTrace m e
-stepTrace prog = loop [prog] []
+stepTrace prog = loop [prog] [] [] []
   where
-    loop [] ss = StepTrace $ Stalled $ \x -> return (loop [send x] ss)
+    loop [] [] ws rs = StepTrace $ Stalled $ \x -> return (loop [] [(x,return RET)] ws rs)
+    loop (m:ms) ss ws rs = StepTrace $ Continued (fmap step) m
       where
-        send x = return (SIGNAL x (return RET))
-    loop (m:ms) ss = StepTrace $ Continued $ fmap step m
-      where
-        step EXIT         = loop [] []
-        step RET          = loop ms ss
-        step (YIELD t)    = loop (ms ++ [t]) ss
-        step (FORK t1 t2) = loop (t1:t2:ms) ss
-        step (WATCH f g)  = loop ms (ss ++ [WATCH f g])
-        step (SIGNAL e t) = loop (ms' ++ [t] ++ ms) ss'
-          where (ms', ss') = partitionEithers evs
-                evs = [ maybe (Right x) (Left . g) (f e) | x@(WATCH f g) <- ss ]
+        step EXIT         = loop [] [] [] []
+        step RET          = loop ms ss ws rs
+        step (YIELD t)    = loop (ms ++ [t]) ss ws rs
+        step (FORK t1 t2) = loop (t1:t2:ms) ss ws rs
+        step (WATCH f g)  = loop ms ss (ws ++ [WATCH f g]) rs
+        step (SIGNAL e t) = loop ms (ss ++ [(e, t)]) ws rs
+        step (SERVE e t)  = loop ms ss ws (rs ++ [(e, t)])
+        step (POLL f g)   = case pick rs [] of
+                              Nothing -> loop (ms++[g Nothing]) ss ws rs
+                              Just (v, t, rs') -> loop ((t:ms) ++ [g (Just v)]) ss ws rs'
+          where
+            pick [] _ = Nothing
+            pick (x@(e,t):xs) ys = case f e of
+              Just v  -> Just (v, t, xs ++ reverse ys)
+              Nothing -> pick xs (x:ys)
+    loop [] ((e,t):ss) ws rs = loop (ms' ++ [t]) ss ws' rs
+      where (ms', ws') = partitionEithers evs
+            evs = [ maybe (Right x) (Left . g) (f e) | x@(WATCH f g) <- ws ]
+
 
 -- | Task monad transformer.
 newtype TaskT e m a
@@ -113,5 +126,7 @@ instance Monad m => MonadTask e (TaskT e m) where
   yield    = TaskT $ ContT $ return . YIELD . ($())
   fork p   = TaskT $ ContT $ return . FORK (taskToTrace p) . ($())
   watch f  = TaskT $ ContT $ return . WATCH f
+  poll f   = TaskT $ ContT $ return . POLL f
   signal e = TaskT $ ContT $ return . SIGNAL e . ($())
+  serve e  = TaskT $ ContT $ return . SERVE e . ($())
 

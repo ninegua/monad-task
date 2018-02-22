@@ -40,9 +40,15 @@ class Monad m => MonadTask e m | m -> e where
   -- | @watch@ suspends the current task to wait for future events, and will
   --   resume execution when an event triggers its watching function.
   watch  :: (e -> Maybe a) -> m a
+  -- | @poll@ is like @watch@ except that it only polls events from
+  --   @serve@-ed source, and it doesn't block current task execution.
+  poll   :: (e -> Maybe a) -> m (Maybe a)
   -- | @signal@ broadcasts an event to all other tasks that are watching,
   --   and give those who wake up the priority to run.
   signal :: e -> m ()
+  -- | @serve@ is like @signal@ but will only resume execution
+  --   when the event is successfully @poll@-ed by some other task.
+  serve  :: e -> m ()
   -- | @exit@ ends all tasks and returns immediately.
   exit   :: m a
   -- | @ret@ ends current task.
@@ -59,7 +65,9 @@ instance (Monad m, MonadTask a m) => MonadTask a (ExceptT e m) where
   yield  = lift yield
   fork   = lift . fork . runExceptT
   watch  = lift . watch
+  poll   = lift . poll
   signal = lift . signal
+  serve  = lift . serve
 
 instance (Monad m, MonadTask a m) => MonadTask a (IdentityT m) where
   ret    = lift ret
@@ -67,7 +75,9 @@ instance (Monad m, MonadTask a m) => MonadTask a (IdentityT m) where
   yield  = lift yield
   fork   = lift . fork . runIdentityT
   watch  = lift . watch
+  poll   = lift . poll
   signal = lift . signal
+  serve  = lift . serve
 
 instance (Monad m, MonadTask a m) => MonadTask a (ListT m) where
   ret    = lift ret
@@ -75,7 +85,9 @@ instance (Monad m, MonadTask a m) => MonadTask a (ListT m) where
   yield  = lift yield
   fork   = lift . fork . runListT
   watch  = lift . watch
+  poll   = lift . poll
   signal = lift . signal
+  serve  = lift . serve
 
 instance (Monad m, MonadTask a m) => MonadTask a (MaybeT m) where
   ret    = lift ret
@@ -83,7 +95,9 @@ instance (Monad m, MonadTask a m) => MonadTask a (MaybeT m) where
   yield  = lift yield
   fork   = lift . fork . runMaybeT
   watch  = lift . watch
+  poll   = lift . poll
   signal = lift . signal
+  serve  = lift . serve
 
 instance (Monad m, MonadTask a m) => MonadTask a (ReaderT r m) where
   ret    = lift ret
@@ -91,7 +105,9 @@ instance (Monad m, MonadTask a m) => MonadTask a (ReaderT r m) where
   yield  = lift yield
   fork   = ReaderT . (fork .) . runReaderT
   watch  = lift . watch
+  poll   = lift . poll
   signal = lift . signal
+  serve  = lift . serve
 
 instance (Monoid w, Monad m, MonadTask a m) => MonadTask a (LazyWriter.WriterT w m) where
   ret    = lift ret
@@ -99,7 +115,9 @@ instance (Monoid w, Monad m, MonadTask a m) => MonadTask a (LazyWriter.WriterT w
   yield  = lift yield
   fork   = lift . fork . LazyWriter.runWriterT
   watch  = lift . watch
+  poll   = lift . poll
   signal = lift . signal
+  serve  = lift . serve
 
 instance (Monoid w, Monad m, MonadTask a m) => MonadTask a (StrictWriter.WriterT w m) where
   ret    = lift ret
@@ -107,5 +125,7 @@ instance (Monoid w, Monad m, MonadTask a m) => MonadTask a (StrictWriter.WriterT
   yield  = lift yield
   fork   = lift . fork . StrictWriter.runWriterT
   watch  = lift . watch
+  poll   = lift . poll
   signal = lift . signal
+  serve  = lift . serve
 
