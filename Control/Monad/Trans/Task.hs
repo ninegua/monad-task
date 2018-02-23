@@ -76,8 +76,8 @@ stepTrace prog = loop [prog] [] [] []
         step (SIGNAL e t) = loop ms (ss ++ [(e, t)]) ws rs
         step (SERVE e t)  = loop ms ss ws (rs ++ [(e, t)])
         step (POLL f g)   = case pick rs [] of
-                              Nothing -> loop (ms++[g Nothing]) ss ws rs
-                              Just (v, t, rs') -> loop ((t:ms) ++ [g (Just v)]) ss ws rs'
+                              Nothing -> loop (g Nothing : ms) ss ws rs
+                              Just (v, t, rs') -> loop (g (Just v) : t : ms) ss ws rs'
           where
             pick [] _ = Nothing
             pick (x@(e,t):xs) ys = case f e of
