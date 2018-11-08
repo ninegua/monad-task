@@ -20,6 +20,7 @@ module Control.Monad.Trans.Task
   ) where
 
 import Control.Applicative
+import Control.Monad.Fail (MonadFail(..))
 import Control.Monad.Reader.Class
 import Control.Monad.State.Class
 import Control.Monad.IO.Class
@@ -109,6 +110,9 @@ instance Monad m => Monad (TaskT e m) where
   (>>=) m f = TaskT $ runTaskT m >>= runTaskT . f
   fail _ = TaskT $ ContT $ \_ -> return EXIT
 
+instance MonadFail m => MonadFail (TaskT e m) where
+  fail = TaskT . Control.Monad.Fail.fail
+
 instance MonadTrans (TaskT e) where
   lift = TaskT . lift
 
@@ -129,4 +133,3 @@ instance Monad m => MonadTask e (TaskT e m) where
   poll f   = TaskT $ ContT $ return . POLL f
   signal e = TaskT $ ContT $ return . SIGNAL e . ($())
   serve e  = TaskT $ ContT $ return . SERVE e . ($())
-
